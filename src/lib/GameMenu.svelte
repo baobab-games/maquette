@@ -3,10 +3,10 @@
    * Menu du jeu, repris d'africa-tower (web-sdk : LayoutShell « modalScrim » + ButtonMenuClose,
    * ButtonSoundSwitch, ButtonSettings, ButtonGameRules, ButtonPayTable, et components-ui-html :
    * Popup, ModalSettings, ModalGameRules, ModalPayTable).
-   * ≡ ouvre un voile noir à 50 % et une colonne de ronds qui monte depuis le ≡ : ✕ à la place exacte du ≡,
-   * puis SON, PARAMÈTRES, INFO (règles du jeu) et TABLEAU DES GAINS. SON bascule le son ; les trois autres
-   * ouvrent chacun leur fenêtre plein écran (fond flouté, × en haut à droite, Échap ou clic à côté pour fermer),
-   * le menu restant ouvert derrière.
+   * ≡ ouvre un voile noir à 50 %, le ✕ à la place exacte du ≡, et juste au-dessus une carte vitrée (popover)
+   * bâtie avec les matériaux du dock : châssis violet nuit au liseré néon cyan, tuiles en verre fumé comme les
+   * cartes SOLDE et MISE, médaillons ronds comme le ☰. Trois tuiles ouvrent leur fenêtre plein écran
+   * (TABLEAU DES GAINS, règles, PARAMÈTRES) ; la quatrième ligne porte un interrupteur vert JOUER pour le son.
    */
   import { onDestroy, tick, type Snippet } from 'svelte';
   import { sound } from './sound.svelte';
@@ -30,10 +30,8 @@
   // Colonne posée sur le ≡ : centre, taille du ≡, diamètre des ronds, écarts (proportions d'africa-tower).
   // Place, taille et forme exactes du ≡ : le ✕ le recouvre à l'identique (rond sur ordinateur, rectangle en portrait).
   let anchor = $state({ x: 0, y: 0, size: 54, width: 54, height: 54, radius: '50%' });
-  const diameter = $derived(Math.max(40, anchor.size * 0.75));
-  // Portrait d'africa-tower : 1er écart 190 et pas 210 pour des ronds de 112,5 ; resserrés si l'écran est court.
-  const pitch = $derived(Math.min(diameter * 1.87, Math.max(diameter * 1.15, (anchor.y - 12 - diameter / 2) / 3.9)));
-  const topGap = $derived(Math.min(diameter * 1.69, pitch * 0.9));
+  // Place laissée à la carte : à droite du bord gauche du ≡, et au-dessus de lui.
+  let room = $state({ width: 290, height: 420 });
 
   function place() {
     trigger = probe?.closest('main')?.querySelector<HTMLElement>('.dock .menu-btn') ?? null;
@@ -46,6 +44,10 @@
       width: rect.width,
       height: rect.height,
       radius: trigger ? getComputedStyle(trigger).borderRadius : '50%',
+    };
+    if (rect) room = {
+      width: Math.max(208, innerWidth - rect.left - 12),
+      height: Math.max(160, rect.top - 26),
     };
   }
   export function open() {
@@ -80,13 +82,12 @@
     info: '<svg viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="7" r="1.5"/><rect x="10.5" y="10" width="3" height="10" rx="1.5"/></svg>',
     payTable: '<svg viewBox="0 0 24 24" fill="none"><path d="M9 4L9 20M15 4L15 20M3 9H21M3 15H21M6.2 20H17.8C18.9201 20 19.4802 20 19.908 19.782C20.2843 19.5903 20.5903 19.2843 20.782 18.908C21 18.4802 21 17.9201 21 16.8V7.2C21 6.0799 21 5.51984 20.782 5.09202C20.5903 4.71569 20.2843 4.40973 19.908 4.21799C19.4802 4 18.9201 4 17.8 4H6.2C5.07989 4 4.51984 4 4.09202 4.21799C3.71569 4.40973 3.40973 4.71569 3.21799 5.09202C3 5.51984 3 6.07989 3 7.2V16.8C3 17.9201 3 18.4802 3.21799 18.908C3.40973 19.2843 3.71569 19.5903 4.09202 19.782C4.51984 20 5.07989 20 6.2 20Z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   };
-  // Ordre de la pile d'africa-tower, du bas vers le haut, au-dessus du ✕.
-  const items = $derived([
-    { id: 'sound', label: soundOn ? 'Son activé' : 'Son désactivé', icon: soundOn ? icons.soundOn : icons.soundOff, onclick: toggleSound, pressed: soundOn },
-    { id: 'settings', label: 'Paramètres', icon: icons.settings, onclick: () => show('settings') },
-    { id: 'gameRules', label: 'Info', aria: 'Info : règles du jeu', icon: icons.info, onclick: () => show('gameRules') },
-    { id: 'payTable', label: 'Tableau des gains', icon: icons.payTable, onclick: () => show('payTable') },
-  ]);
+  // Les trois tuiles qui ouvrent une fenêtre, de haut en bas ; la ligne du son vient ensuite, avec son interrupteur.
+  const tiles = [
+    { id: 'payTable', title: 'Tableau des gains', aria: 'Tableau des gains', icon: icons.payTable, onclick: () => show('payTable') },
+    { id: 'gameRules', title: 'Règles & infos', aria: 'Info : règles du jeu', icon: icons.info, onclick: () => show('gameRules') },
+    { id: 'settings', title: 'Paramètres', aria: 'Paramètres', icon: icons.settings, onclick: () => show('settings') },
+  ];
   const volumes = [
     { label: 'Volume principal', get: () => sound.master, set: (value: number) => (sound.master = value) },
     { label: 'Volume musique', get: () => sound.music, set: (value: number) => (sound.music = value) },
@@ -100,21 +101,33 @@
 {#if menuOpen}
   <!-- Voile du menu : un clic à côté referme (africa-tower : scrim 0,5, onpointerup → menuOpen = false). -->
   <div class="gm-menu" role="dialog" aria-modal="true" aria-label="Menu du jeu"
-    style:--d="{diameter}px" style:--size="{anchor.size}px"
+    style:--size="{anchor.size}px" style:--pop-w="{room.width}px" style:--pop-h="{room.height}px"
     style:--close-w="{anchor.width}px" style:--close-h="{anchor.height}px" style:--close-radius={anchor.radius}>
     <button type="button" class="gm-scrim" tabindex="-1" aria-label="Fermer le menu" onclick={close}></button>
     <div class="gm-column" style:left="{anchor.x}px" style:top="{anchor.y}px">
       <button bind:this={closeButton} type="button" class="gm-close" aria-label="Fermer le menu" onclick={close}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
       </button>
-      {#each items as item, index (item.id)}
-        <button type="button" class="gm-item" style:--y="{-(topGap + pitch * index)}px"
-          aria-label={item.aria ?? item.label} aria-pressed={item.pressed} aria-haspopup={item.id === 'sound' ? undefined : 'dialog'}
-          onclick={item.onclick}>
-          <span class="gm-circle" aria-hidden="true">{@html item.icon}</span>
-          <span class="gm-label">{item.label}</span>
-        </button>
-      {/each}
+      <!-- Carte vitrée posée juste au-dessus du ✕, alignée sur son bord gauche. -->
+      <div class="menu-popover-card">
+        <div class="popover-header"><span>Options</span></div>
+        {#each tiles as tile (tile.id)}
+          <button type="button" class="menu-tile" aria-label={tile.aria} aria-haspopup="dialog" onclick={tile.onclick}>
+            <span class="tile-icon-badge" aria-hidden="true">{@html tile.icon}</span>
+            <span class="tile-title">{tile.title}</span>
+            <svg class="tile-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>
+          </button>
+        {/each}
+        <!-- Son : même bascule que le bouton SON du dock (volume principal partagé). -->
+        <div class="menu-tile toggle-tile">
+          <span class="tile-icon-badge" aria-hidden="true">{@html soundOn ? icons.soundOn : icons.soundOff}</span>
+          <span class="tile-title">Sons du jeu</span>
+          <button type="button" class="neon-switch" class:active={soundOn} aria-pressed={soundOn}
+            aria-label={soundOn ? 'Son activé' : 'Son désactivé'} onclick={toggleSound}>
+            <span class="switch-thumb"></span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -179,40 +192,96 @@
   .gm-close svg { width: calc(var(--size) * 0.46); height: calc(var(--size) * 0.46); fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
   .gm-close:hover { transform: translate(-50%, -50%) scale(1.05); }
   .gm-close:active { transform: translate(-50%, -50%) scale(0.95); }
-  /* Un rond noir cerclé de blanc (UiButton du web-sdk : bord 7 % du diamètre, blanc à 80 %), libellé à droite. */
-  .gm-item {
+  /* ── Carte vitrée du menu : le châssis du dock (barre du bas), posé au-dessus du ✕ ──
+     Même matière que la barre : fond violet nuit, liseré violet, filet néon cyan sur le bord haut. */
+  .menu-popover-card {
     position: absolute;
-    left: calc(var(--d) / -2);
-    top: calc(var(--y) - var(--d) / 2);
+    bottom: calc(var(--close-h) / 2 + 14px);
+    left: calc(var(--close-w) / -2);
+    box-sizing: border-box;
+    width: min(290px, var(--pop-w));
+    max-height: var(--pop-h);
+    overflow-y: auto;
+    padding: 14px;
+    border: 1.5px solid #4a3b75;
+    border-radius: 20px;
+    background: linear-gradient(180deg, #241f3d 0%, #161229 60%, #0e0a1f 100%);
+    box-shadow: inset 0 1.5px 0 #00f2fe, 0 16px 40px rgba(0, 0, 0, 0.85);
+    font-family: Inter, 'Segoe UI', system-ui, -apple-system, sans-serif;
+    transform-origin: bottom left;
+    animation: gm-popover 0.22s cubic-bezier(0.18, 0.89, 0.32, 1.25);
+  }
+  .popover-header { padding: 2px 4px 10px; color: #a79fc2; font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; }
+  /* Tuiles : le verre fumé exact des cartes SOLDE et MISE du dock. */
+  .menu-tile {
     display: flex;
     align-items: center;
-    gap: calc(var(--d) * 0.55);
-    height: var(--d);
+    gap: 12px;
+    width: 100%;
     min-height: 0;
-    padding: 0;
-    border: 0;
+    margin: 0 0 8px;
+    padding: 9px 12px;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 12px;
     color: #fff;
-    background: none;
-    white-space: nowrap;
-    transition: transform 0.12s ease;
-    transform-origin: calc(var(--d) / 2) 50%;
+    background: linear-gradient(135deg, rgba(46, 35, 78, 0.6) 0%, rgba(20, 15, 38, 0.8) 100%);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+    text-align: left;
+    transition: background-color 0.15s ease-out, border-color 0.15s ease-out, transform 0.15s ease-out;
   }
-  .gm-item:hover { transform: scale(1.05); }
-  .gm-item:active { transform: scale(0.95); }
-  .gm-circle {
+  .menu-tile:last-child { margin-bottom: 0; }
+  button.menu-tile { cursor: pointer; }
+  button.menu-tile:hover { border-color: #00f2fe; background: rgba(65, 50, 110, 0.7); transform: translateX(3px); }
+  button.menu-tile:active { transform: translateX(1px) scale(0.99); }
+  .tile-title { color: #fff; font-size: 13px; font-weight: 700; line-height: 1.2; user-select: none; }
+  .tile-chevron { width: 16px; height: 16px; margin-left: auto; flex: none; fill: none; stroke: #a79fc2; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+  /* Médaillons : la matière du bouton ☰ du dock (anneau sombre, disque bombé, symbole blanc). */
+  .tile-icon-badge {
     display: grid;
     place-items: center;
     flex: none;
-    width: var(--d);
-    height: var(--d);
+    width: 32px;
+    height: 32px;
     box-sizing: border-box;
-    border: calc(var(--d) * 0.07) solid rgba(255, 255, 255, 0.8);
+    border: 1.5px solid #3b3459;
     border-radius: 50%;
-    background: #000;
+    background: radial-gradient(circle at 50% 30%, #2d2749 0%, #1a1631 58%, #100d21 100%);
+    box-shadow: 0 0 0 1.5px #5c4f88, inset 0 1.5px 0 rgba(255, 255, 255, 0.14);
   }
-  .gm-circle :global(svg) { width: 60%; height: 60%; }
-  .gm-label { font-family: 'Montserrat', system-ui, sans-serif; font-size: 18px; font-weight: 700; text-transform: uppercase; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); }
-  .gm-item:focus-visible, .gm-close:focus-visible { outline: 2px solid #ffd166; outline-offset: 4px; }
+  .tile-icon-badge :global(svg) { width: 17px; height: 17px; }
+  /* Interrupteur du son : gélule verte, le vert de JOUER (gemme émeraude du dock). */
+  .toggle-tile { padding-right: 10px; }
+  .neon-switch {
+    position: relative;
+    flex: none;
+    width: 44px;
+    height: 24px;
+    min-height: 0;
+    margin-left: auto;
+    padding: 0;
+    border: 1px solid #4a3b75;
+    border-radius: 999px;
+    background: #2b2545;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+    transition: background-color 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .neon-switch.active { border-color: #4ade80; background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%); box-shadow: 0 0 10px rgba(34, 197, 94, 0.55), inset 0 1.5px 0 rgba(255, 255, 255, 0.3); }
+  .switch-thumb {
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #fff 0%, #d8d2ee 100%);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+    transform: translateY(-50%);
+    transition: left 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .neon-switch.active .switch-thumb { left: 21px; }
+  .menu-tile:focus-visible, .neon-switch:focus-visible, .gm-close:focus-visible { outline: 2px solid #00f2fe; outline-offset: 3px; }
+  @keyframes gm-popover { from { opacity: 0; transform: translateY(10px) scale(0.94); } }
 
   /* ── Fenêtre d'une section (Popup du web-sdk) ── */
   .gm-popup {
@@ -272,7 +341,10 @@
   .gm-volume-row input { width: 70%; accent-color: gold; }
   .gm-value { display: flex; align-items: center; justify-content: center; width: 15%; }
   @keyframes gm-in { from { opacity: 0; filter: blur(6px); } }
-  @media (prefers-reduced-motion: reduce) { .gm-popup { animation: none; } .gm-item, .gm-close { transition: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .gm-popup, .menu-popover-card { animation: none; }
+    .gm-close, .menu-tile, .neon-switch, .switch-thumb { transition: none; }
+  }
 
   /* ── Contenus des fenêtres (GameRulesContent / PayTableContent d'africa-tower) ── */
   .gm-scroll :global(section) { margin-bottom: 1.5rem; }

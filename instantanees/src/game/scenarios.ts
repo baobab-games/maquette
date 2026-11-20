@@ -6,10 +6,12 @@ export const scenarios = {
 } as const;
 
 export type Scenario = keyof typeof scenarios;
+// Quatre niveaux : plus l'objectif du dé est haut, plus le gain l'est aussi.
 export const risks = {
-  low: { label: 'Prudent', min: 2, factor: 1.15, hint: '2 ou plus' },
-  balanced: { label: 'Équilibré', min: 4, factor: 1.9, hint: '4 ou plus' },
-  high: { label: 'Audacieux', min: 6, factor: 5.6, hint: 'Un 6' },
+  facile: { label: 'Facile', min: 2, factor: 1.15, hint: '2 ou plus' },
+  normale: { label: 'Normale', min: 4, factor: 1.9, hint: '4 ou plus' },
+  difficile: { label: 'Difficile', min: 5, factor: 2.85, hint: '5 ou plus' },
+  experte: { label: 'Experte', min: 6, factor: 5.6, hint: 'Un 6' },
 } as const;
 export type Risk = keyof typeof risks;
 export const riskTypes = Object.keys(risks) as Risk[];

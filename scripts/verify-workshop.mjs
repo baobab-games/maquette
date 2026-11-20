@@ -201,6 +201,38 @@ try {
         });
         assert(arc && Object.values(arc).every(Boolean), `${family[1]} ${layout} : flèches de mise creusées sur la courbe de la carte. ${JSON.stringify(arc)}`);
       }
+      // Difficulté : le bouton fermé porte la jauge et le seul nom du niveau (sans le mot « Difficulté ») ; la carte
+      // montre une barre de plus par niveau, à la couleur du niveau (vert, doré, corail, violet), et coche celui en cours.
+      if (await frame().locator('.difficulty-pill').count()) {
+        const trigger = frame().getByRole('button',{name:/^Difficulté :/});
+        const label = await trigger.getAttribute('aria-label');
+        await trigger.click();
+        await frame().locator('.difficulty-menu').waitFor();
+        const gauge = await frame().locator('.difficulty-menu').evaluate(card => {
+          const box = card.getBoundingClientRect(), rows = [...card.querySelectorAll('.difficulty-option')];
+          const palette = ['rgb(0, 230, 118)','rgb(255, 199, 0)','rgb(255, 61, 87)','rgb(213, 0, 249)'];
+          return {
+            nommé:(() => {
+              const pill = document.querySelector('.difficulty-pill');
+              return pill.innerText.trim() === (pill.getAttribute('aria-label') || '').replace(/^Difficulté\s*:\s*/, '');
+            })(),
+            jauge:!!document.querySelector('.difficulty-pill .risk-gauge'),
+            tientDansLaTuile:(() => {
+              const pill = document.querySelector('.difficulty-pill');
+              return pill.scrollWidth <= pill.clientWidth + 1 && pill.scrollHeight <= pill.clientHeight + 1;
+            })(),
+            titre:card.querySelector('.popover-title')?.textContent === 'Difficulté',
+            escalier:rows.map(row => row.querySelectorAll('rect.on').length).join('-') === rows.map((_,index) => index + 1).join('-'),
+            couleurs:rows.map(row => getComputedStyle(row.querySelector('rect.on')).fill).join(',') === palette.slice(0,rows.length).join(','),
+            cochée:card.querySelectorAll('[aria-checked="true"]').length === 1,
+            dansEcran:box.left >= -1 && box.top >= -1 && box.right <= innerWidth + 1 && box.bottom <= innerHeight + 1,
+          };
+        });
+        assert(Object.values(gauge).every(Boolean),`${family[1]} ${layout} : jauge de difficulté. ${JSON.stringify(gauge)}`);
+        assert(/^Difficulté : \S/.test(label),`${family[1]} ${layout} : le niveau reste annoncé aux lecteurs d'écran.`);
+        await page.keyboard.press('Escape');
+        await frame().locator('.difficulty-menu').waitFor({state:'hidden'});
+      }
       await frame().locator('.dock').evaluate(async hud => {
         const animations = hud.getAnimations({subtree:true}).filter(animation => Number.isFinite(animation.effect?.getComputedTiming().endTime));
         await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
@@ -224,6 +256,31 @@ try {
         && getComputedStyle(trigger).borderRadius === getComputedStyle(closeButton).borderRadius;
     });
     assert(onMenu,`${family[1]} : le ✕ du menu reprend la place, la taille et la forme du ≡.`);
+    // Carte vitrée du menu : châssis et verre fumé du dock, quatre tuiles, posée au-dessus du ✕ et entière à l'écran.
+    const popover = await frame().locator('.menu-popover-card').evaluate(card => {
+      const box = card.getBoundingClientRect(), close = document.querySelector('.gm-close').getBoundingClientRect();
+      const tile = card.querySelector('.menu-tile'), badge = card.querySelector('.tile-icon-badge');
+      const chassis = getComputedStyle(card), glass = getComputedStyle(tile), medal = getComputedStyle(badge);
+      return {
+        aboveClose:box.bottom <= close.top + 1 && Math.abs(box.left - close.left) < 2,
+        onScreen:box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight,
+        whole:card.scrollHeight <= card.clientHeight + 1,
+        tiles:card.querySelectorAll('.menu-tile').length === 4,
+        // Mêmes matériaux que la barre du bas : châssis violet nuit liseré #4a3b75, néon cyan en haut, verre fumé des cartes.
+        chassis:chassis.borderTopColor === 'rgb(74, 59, 117)' && chassis.boxShadow.includes('rgb(0, 242, 254)')
+          && chassis.backgroundImage.includes('rgb(36, 31, 61)') && chassis.backgroundImage.includes('rgb(14, 10, 31)'),
+        glass:glass.backgroundImage.includes('rgba(46, 35, 78, 0.6)') && glass.backgroundImage.includes('rgba(20, 15, 38, 0.8)'),
+        medallion:medal.borderRadius === '50%' && medal.backgroundImage.includes('rgb(45, 39, 73)'),
+      };
+    });
+    assert(Object.values(popover).every(Boolean),`${family[1]} : carte vitrée du menu aux matériaux du dock. ${JSON.stringify(popover)}`);
+    // L'interrupteur du son suit le même volume que le bouton SON du dock, dans les deux sens.
+    const soundSwitch = frame().locator('.neon-switch');
+    const wasOn = await soundSwitch.evaluate(button => button.classList.contains('active'));
+    await soundSwitch.click();
+    assert(await soundSwitch.evaluate((button,on) => button.classList.contains('active') !== on,wasOn),`${family[1]} : l'interrupteur du son bascule.`);
+    await soundSwitch.click();
+    assert(await soundSwitch.evaluate((button,on) => button.classList.contains('active') === on,wasOn),`${family[1]} : l'interrupteur du son revient à son état.`);
     for (const [name,title] of [['Paramètres','Paramètres'],['Info : règles du jeu','Règles du jeu'],['Tableau des gains','Tableau des gains']]) {
       await menu.getByRole('button',{name,exact:true}).click();
       await frame().getByRole('dialog',{name:title,exact:true}).waitFor();
@@ -305,7 +362,7 @@ try {
   await frame().locator('main[data-scenario="running"]').waitFor();
   await chooseFamily(...families[1]);
   await frame().getByRole('button',{name:/^Difficulté :/}).click();
-  await frame().getByRole('menuitemradio',{name:/^Audacieux/}).click();
+  await frame().getByRole('menuitemradio',{name:/^Experte/}).click();
   await frame().locator('.master-play-btn').click();
   await frame().locator('main[data-scenario="won"]').waitFor();
   await frame().getByLabel('Dé : 6',{exact:true}).waitFor();
@@ -315,7 +372,7 @@ try {
   await frame().locator('main[data-scenario="lost"]').waitFor();
   await chooseFamily(...families[2]);
   await frame().getByRole('button',{name:/^Difficulté :/}).click();
-  await frame().getByRole('menuitemradio',{name:/^Expert/}).click();
+  await frame().getByRole('menuitemradio',{name:/^Experte/}).click();
   await frame().locator('.master-play-btn').click();
   await frame().locator('main[data-scenario="playing"]').waitFor();
   // En jeu : la difficulté disparaît ; ENCAISSER entoure la pierre verte, qui montre une flèche (pas « JOUER ») et révèle une case au hasard.

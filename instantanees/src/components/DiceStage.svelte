@@ -1,7 +1,7 @@
 <script lang="ts">
   import { scenarios, risks, type Scenario, type Risk } from '../game/scenarios';
   import { formatDecimal } from '../game/format';
-  let { scenario, playedRisk = 'balanced', face = 5, payout = 0, turbo = false }: { scenario: Scenario; playedRisk?: Risk; face?: number; payout?: number; turbo?: boolean } = $props();
+  let { scenario, playedRisk = 'normale', face = 5, payout = 0, turbo = false }: { scenario: Scenario; playedRisk?: Risk; face?: number; payout?: number; turbo?: boolean } = $props();
   const pips: Record<number, number[]> = { 1: [4], 2: [0,8], 3: [0,4,8], 4: [0,2,6,8], 5: [0,2,4,6,8], 6: [0,2,3,5,6,8] };
   const result = $derived(scenario === 'won' || scenario === 'lost');
 </script>
