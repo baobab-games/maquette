@@ -18,7 +18,7 @@ Ouvrir **http://localhost:3052**. Si nécessaire, installer d'abord avec `npm in
 ## Essayer la maquette
 
 1. Choisir une mise avec `−`, `+` ou en touchant le montant.
-2. Choisir la difficulté : Calme (1 piège), Normal (3 pièges) ou Expert (5 pièges), dans la liste déroulante du dock, dans tous les formats (au-dessus du SOLDE en portrait).
+2. Choisir la difficulté : **Facile** (1 piège), **Normale** (3 pièges), **Difficile** (5 pièges) ou **Experte** (7 pièges, jusqu'à ×1 200), dans la liste déroulante du dock, dans tous les formats (au-dessus du SOLDE en portrait).
    En portrait, la rangée du haut garde quatre boutons : ☰, la difficulté, **SON** (même bascule que dans le menu ≡) et **TURBO**, qui accélère la révélation des cases. TURBO est aussi dans les autres formats, sous la difficulté.
 3. Appuyer sur **Jouer**.
 4. Choisir une case. Un trésor augmente le gain ; un piège termine la manche.

@@ -7,7 +7,7 @@
   import CasinoControlDock from '../../../src/lib/CasinoControlDock.svelte';
   import AutoSpinModal from '../../../src/lib/AutoSpinModal.svelte';
   import '../game/hud.css';
-  let { scenario, layout, amount = $bindable(config.bet), risk = $bindable<Risk>('balanced'), turbo = $bindable(false), autoRemaining = 0, onaction, onautostart, onautostop, onmenu }: {
+  let { scenario, layout, amount = $bindable(config.bet), risk = $bindable<Risk>('normale'), turbo = $bindable(false), autoRemaining = 0, onaction, onautostart, onautostop, onmenu }: {
     scenario: Scenario; layout: LayoutType; amount?: number; risk?: Risk; turbo?: boolean;
     /** Parties automatiques restant à jouer, celle en cours comprise (0 : pas de série). */
     autoRemaining?: number;

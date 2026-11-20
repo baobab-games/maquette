@@ -183,6 +183,10 @@
   }
 
   const showDifficulty = $derived(difficulties.length > 0);
+  /* Jauge de volatilité : une barre de plus par niveau, et une couleur par niveau —
+     vert néon, jaune doré, rouge corail puis violet électrique. */
+  const LEVEL_COLORS = ['#00e676', '#ffc700', '#ff3d57', '#d500f9'];
+  const difficultyRank = $derived(Math.max(0, difficulties.indexOf(difficulty)));
   /*
    * Portrait : la rangée du haut garde toujours quatre boutons, pour la symétrie autour de JOUER —
    * ☰ et une place à gauche, deux places à droite. Chaque jeu y met ce qu'il a (difficulté, AUTO, TURBO) ;
@@ -373,19 +377,33 @@
   </button>
 {/snippet}
 
-{#snippet difficultyControl(caption: boolean)}
+{#snippet riskGauge(rank: number)}
+  <!-- Quatre barres montantes : allumées jusqu'au niveau, à sa couleur ; les autres en gris translucide. -->
+  <svg class="risk-gauge" viewBox="0 0 16 14" aria-hidden="true" style:--risk={LEVEL_COLORS[Math.min(rank, LEVEL_COLORS.length - 1)]}>
+    {#each [0, 1, 2, 3] as bar (bar)}
+      <rect class:on={bar <= rank} x={bar * 4.3333} y={9 - bar * 3} width="3" height={5 + bar * 3} rx="1.5" />
+    {/each}
+  </svg>
+{/snippet}
+
+{#snippet difficultyControl()}
   <div class="difficulty" bind:this={difficultyBox}>
+    <!-- Bouton fermé : la jauge du niveau en cours, son nom (sans le mot « Difficulté », qui tient dans l'étiquette) et un chevron. -->
     <button bind:this={difficultyButton} type="button" class="pill difficulty-pill"
       aria-haspopup="menu" aria-expanded={menuOpen}
-      aria-label="Difficulté : {difficulty}" disabled={locked} onclick={difficultyClick}>
-      {#if caption}<span class="pill-caption">Difficulté&nbsp;:</span>{/if}
-      <span class="pill-value">{difficulty}<svg class="pill-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg></span>
+      aria-label="Difficulté : {difficulty}" title="Difficulté : {difficulty}" disabled={locked} onclick={difficultyClick}>
+      {@render riskGauge(difficultyRank)}
+      <span class="difficulty-current-label">{difficulty}</span>
+      <svg class="pill-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
     </button>
     {#if menuOpen}
       <div class="difficulty-menu" role="menu" tabindex="-1" aria-label="Choisir la difficulté" bind:this={menuList} onkeydown={moveFocus}>
-        {#each difficulties as level (level)}
-          <button type="button" class="difficulty-option" role="menuitemradio" aria-checked={level === difficulty} onclick={() => chooseDifficulty(level)}>
-            <span class="option-text">{level}{#if difficultyHints[level]}<small>{difficultyHints[level]}</small>{/if}</span>
+        <span class="popover-title" aria-hidden="true">Difficulté</span>
+        {#each difficulties as level, rank (level)}
+          <button type="button" class="difficulty-option" role="menuitemradio" aria-checked={level === difficulty}
+            title={difficultyHints[level] ?? undefined} onclick={() => chooseDifficulty(level)}>
+            {@render riskGauge(rank)}
+            <span class="option-text">{level}</span>
             <svg class="option-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10" /></svg>
           </button>
         {/each}
@@ -514,7 +532,7 @@
       {@render menuButton()}
       <!-- Trois places autour de ☰ : difficulté (ou autre) à gauche, puis les deux de droite. -->
       {#if portraitTabs[0] === 'difficulty'}
-        <div class="p-difficulty">{@render difficultyControl(true)}</div>
+        <div class="p-difficulty">{@render difficultyControl()}</div>
       {:else if portraitTabs[0]}
         {@render portraitTab(portraitTabs[0], 'p-left')}
       {/if}
@@ -577,7 +595,7 @@
         <!-- Difficulté (ou HISTORIQUE) sur toute la largeur en haut ; AUTO et TURBO en dessous, de la même forme. -->
         <div class="options-stack" class:compact={showDifficulty}>
           {#if showDifficulty}
-            {@render difficultyControl(true)}
+            {@render difficultyControl()}
           {/if}
           {#if showHistory}{@render historyControl('mode-btn solo')}{/if}
           {#if showAuto}{@render autoButton(!showTurbo)}{/if}
@@ -882,10 +900,14 @@
   /* Activé : AUTO et TURBO s'éclairent en or (l'éclair de TURBO se remplit). */
   .auto-btn.auto-on, .turbo-btn.turbo-on { border-color: #6b4e0f; color: #fcd34d; box-shadow: 0 0 0 1.5px #fbbf24, inset 0 1.5px 0 rgba(255, 255, 255, 0.14), 0 0 14px rgba(251, 191, 36, 0.45); }
   .turbo-btn.turbo-on .mode-icon { fill: currentColor; }
-  .difficulty-pill { flex-direction: column; gap: calc(1 * var(--u)); line-height: 1.05; }
-  .pill-caption { color: #d4cdea; font-size: max(8px, calc(9.5 * var(--u))); font-weight: 500; }
-  .pill-value { display: inline-flex; align-items: center; gap: calc(2 * var(--u)); color: #fff; font-size: max(9px, calc(11 * var(--u))); font-weight: 600; }
-  .pill-chevron { width: calc(11 * var(--u)); height: calc(11 * var(--u)); fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s ease; }
+  .difficulty-pill { gap: calc(6 * var(--u)); padding-inline: calc(5 * var(--u)); }
+  /* Le nom du niveau, à côté de la jauge : sans lui, les barres se lisaient comme un indicateur de réseau. */
+  .difficulty-current-label { color: #fff; font-size: max(9px, calc(11 * var(--u))); font-weight: 700; line-height: 1; white-space: nowrap; }
+  /* Jauge : barres éteintes en gris translucide, barres allumées à la couleur du niveau avec un léger halo. */
+  .risk-gauge { flex: none; width: calc(16 * var(--u)); height: calc(14 * var(--u)); }
+  .risk-gauge rect { fill: rgba(255, 255, 255, 0.15); }
+  .risk-gauge rect.on { fill: var(--risk); filter: drop-shadow(0 0 2px var(--risk)); }
+  .pill-chevron { flex: none; width: calc(10 * var(--u)); height: calc(10 * var(--u)); color: #a79fc2; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.2s ease; }
   .difficulty-pill[aria-expanded='true'] .pill-chevron { transform: rotate(180deg); }
 
   /* Liste déroulante des difficultés : elle s'ouvre vers le haut, au-dessus du dock. */
@@ -919,8 +941,9 @@
     font: 600 13px system-ui, -apple-system, sans-serif;
     text-align: left;
   }
-  .option-text { display: grid; gap: 1px; }
-  .option-text small { color: #a79fc2; font-size: 11px; font-weight: 500; }
+  .popover-title { padding: 3px 8px 5px; color: #a79fc2; font: 700 10px system-ui, -apple-system, sans-serif; letter-spacing: 1.4px; text-transform: uppercase; }
+  .difficulty-option .risk-gauge { width: 16px; height: 14px; }
+  .option-text { margin-right: auto; }
   .difficulty-option:hover, .difficulty-option:focus-visible { color: #fff; background: rgba(139, 92, 246, 0.18); outline-offset: -2px; }
   .difficulty-option[aria-checked='true'] { color: #fff; background: rgba(139, 92, 246, 0.28); }
   .option-check { width: 14px; height: 14px; fill: none; stroke: #00f2fe; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
@@ -1317,6 +1340,12 @@
     padding: 0 calc((var(--mid-arc) - var(--inner)) * var(--p)) 0 calc(12 * var(--p));
   }
   .p-difficulty .difficulty-pill:hover:enabled { border-color: #8b7bc4; filter: brightness(1.2); }
+  /* Portrait : la tuile est creusée par l'arc de JOUER, trop étroite pour la jauge et le nom côte à côte.
+     Le nom passe donc sous la jauge, sur une seule ligne, et le chevron s'efface (les trois autres tuiles n'en ont pas). */
+  .p-difficulty .difficulty-pill { flex-direction: column; gap: calc(3 * var(--p)); }
+  .p-difficulty .risk-gauge { width: calc(13 * var(--u)); height: calc(11.4 * var(--u)); }
+  .p-difficulty .difficulty-current-label { font-size: max(8px, calc(9.5 * var(--u))); letter-spacing: -0.2px; }
+  .p-difficulty .pill-chevron { display: none; }
   /* Le menu s'ouvre au-dessus de la liste, aligné sur son bord gauche. */
   .p-difficulty .difficulty-menu { left: 0; right: auto; min-width: 100%; transform: none; animation-name: menu-in-up; }
   @keyframes menu-in-up { from { opacity: 0; transform: translateY(6px); } }

@@ -15,7 +15,7 @@ Ouvrir **http://localhost:3051**. Pour fermer le serveur : `Ctrl + C`.
 
 ## Ce que l'on peut faire
 
-1. Choisir un risque : **Prudent** (2 ou plus), **Équilibré** (4 ou plus), **Audacieux** (un 6). Il se choisit dans la liste Difficulté du dock, dans tous les formats (au-dessus du SOLDE en portrait).
+1. Choisir un risque : **Facile** (2 ou plus, ×1,15), **Normale** (4 ou plus, ×1,90), **Difficile** (5 ou plus, ×2,85) ou **Experte** (un 6, ×5,60). Il se choisit dans la liste Difficulté du dock, dans tous les formats (au-dessus du SOLDE en portrait).
 2. Régler la mise avec `−`, `+` ou en touchant le montant pour ouvrir la fenêtre de choix.
 3. Appuyer sur **Jouer**. Le lancer dure brièvement, puis le résultat s'affiche. Le bouton **Turbo** du dock raccourcit le lancer.
 4. Appuyer de nouveau sur **Jouer** pour regarder le résultat suivant.

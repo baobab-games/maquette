@@ -18,10 +18,10 @@
   let detected = $state<LayoutType>('desktop');
   let phase = $state<Scenario>(scenario);
   let amount = $state(config.bet);
-  let risk = $state<Risk>('balanced');
+  let risk = $state<Risk>('normale');
   let resultFace = $state(5);
   let resultBet = $state(config.bet);
-  let resultRisk = $state<Risk>('balanced');
+  let resultRisk = $state<Risk>('normale');
   // Turbo : lancer plus court et dé qui roule plus vite.
   let turbo = $state(false);
   let previous: Scenario | undefined;

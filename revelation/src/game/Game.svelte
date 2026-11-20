@@ -19,8 +19,8 @@
   let detected = $state<LayoutType>('desktop');
   let currentScenario = $state<Scenario>('ready');
   let amount = $state(config.bet);
-  let difficulty = $state<Difficulty>('normal');
-  let roundDifficulty = $state<Difficulty>('normal');
+  let difficulty = $state<Difficulty>('normale');
+  let roundDifficulty = $state<Difficulty>('normale');
   let roundBet = $state(config.bet);
   let revealed = $state<number[]>([]);
   let settledPayout = $state(0);
